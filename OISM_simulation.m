@@ -1,10 +1,13 @@
-clc,clear
-N_obj_sam=512;  %采样频率
-D=2.5;%% 圆孔径mm
-plotW=4;%% 绘图宽度mm
-z=600; %% 衍射距离 mm
+
+function [Img_Amy]=OISM_simulation(thetaxx)
+N_obj_sam=1024;  %采样频率
+D=1;%% 圆孔径mm
+plotW=2;%% 绘图宽度mm
+z=15; %% 衍射距离 mm
 lambda=632.8e-6; %% 波长mm
-N=6;%% 补零数
+N=4;%% 补零数
+theta0=0;%% 入射角   0*pi/180
+sam=128;
 %============================================
 %物光场
     plotW2=plotW/2;
@@ -12,8 +15,14 @@ N=6;%% 补零数
     Obj_x=linspace(-plotW2,plotW2,N_obj_sam);
     [Obj_x,Obj_y]=meshgrid(Obj_x,Obj_x);
     Obj_A2=zeros(N_obj_sam);Obj_P=Obj_A2;
-    Obj_A2((Obj_x.^2+Obj_y.^2)<=R^2)=1;
-Obj_E=Obj_A2.*exp(1i*Obj_P);
+    
+    dh=0.008;
+    lh=0.002;
+    a=thetaxx;sf=randn(N_obj_sam/2^a)*sqrt(1);
+    sf1=imresize(sf,2^a);
+    Obj_P1=2*pi*sf1;
+    Obj_A2(((Obj_x*cos(theta0)).^2+Obj_y.^2)<=R^2)=1;
+    Obj_E=Obj_A2.*exp(1i*Obj_P1);
 %============================================
 %物光场补零
     Obj_Ezf=F_ZerosFilling(Obj_E,N_obj_sam,N*N_obj_sam);
@@ -24,7 +33,7 @@ Obj_E=Obj_A2.*exp(1i*Obj_P);
     [A_x,A_y]=meshgrid(A_x,A_y);%% 构造角谱
 %角谱传播
     k=2*pi/lambda;%波矢量
-    H=exp(1i*k*z*sqrt(1-(A_x.^2+A_y.^2)));%自由空间光学传递函数
+    H=exp(1i*k*z*sqrt(1-(A_x.^2+A_y.^2)));
     B=A.*H;
 %逆变换成像传播
     Img_Ezf=fftshift(ifft2(fftshift(B)));
@@ -40,6 +49,7 @@ subplot(233)
     title(strcat('通光孔径 D=',num2str(D),'mm'))  
 subplot(234)
 Img_A2=F_NorOne(abs(Img_E).^2);
+Img_Amy=Img_A2(N_obj_sam-sam/2:N_obj_sam+sam/2-1,N_obj_sam-sam/2:N_obj_sam+sam/2-1);
     F_2DPlot(Img_A2,plotW,'mm','mm',strcat('像面光斑 z=',num2str(z),'mm'))
 subplot(235)
     F_2DPlot(angle(Img_E),plotW,'mm','mm','像面相位')
@@ -48,7 +58,8 @@ subplot(236)
     plot(x_plot_img,Img_A2(N_obj_sam,:),'color',[0 0 0],'LineWidth',3)
     xlabel('mm');ylabel('I');xlim([-plotW plotW]);
     title(strcat('艾里斑半径理论值 R_A_i_r_y= 1.22\lambdaz/D=',num2str(1.22*lambda*z/D),'mm'))
- 
+end
+
 function F_2DPlot(z,k,xl,yl,tl)
 %本函数目的：绘制3维曲面图，去边框，带标题和label
 %输入变量：k为放缩坐标轴的因子
@@ -76,13 +87,9 @@ function O_A2_Plot=F_UnZerosFilling(O_A2,Samp_p)
 O_A2_Plot=O_A2(a/2-Samp_p/2+1:a/2+Samp_p/2,b/2-Samp_p/2+1:b/2+Samp_p/2);
 end
  
- 
 function A_n=F_NorOne(A)
 mA=min(A(:));
 A=A-mA;
 MA=max(A(:));
 A_n=A/MA;
 end
-% ————————————————
-% 版权声明：本文为CSDN博主「大洋咩咩咩咩」的原创文章。
-% 原文链接：https://blog.csdn.net/weixin_43857337/article/details/128553590
